@@ -2,6 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import planWorkflow from "../../src/index.ts";
 import { registerSkillTool } from "../../src/skill/tool.ts";
 import type { SkillRegistrySnapshot } from "../../src/skill/registry.ts";
 
@@ -141,5 +142,24 @@ describe("Skill tool", () => {
       'Error loading skill "brainstorming"',
     );
     expect(result.details.skillPath).toBe(skillPath);
+  });
+});
+
+describe("Skill entrypoint integration", () => {
+  it("registers both TodoWrite and Skill tools", () => {
+    const tools: Array<{ name: string }> = [];
+    const pi = {
+      registerTool(tool: { name: string }) {
+        tools.push(tool);
+      },
+      on() {},
+      registerCommand() {},
+    };
+
+    planWorkflow(pi as never);
+
+    expect(tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining(["TodoWrite", "Skill"]),
+    );
   });
 });
