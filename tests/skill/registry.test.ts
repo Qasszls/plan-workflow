@@ -114,6 +114,50 @@ describe("skill registry", () => {
     expect(invalidName.diagnostics[0].message).toContain("invalid skill name");
   });
 
+  it("parses folded block-scalar descriptions from frontmatter", () => {
+    const parsed = parseSkillFile({
+      filePath: join(root, "folded.md"),
+      baseDir: root,
+      source: "project-pi",
+      content: [
+        "---",
+        "name: folded-description",
+        "description: >",
+        "  First line",
+        "  second line",
+        "",
+        "  New paragraph",
+        "---",
+        "# Body",
+        "",
+      ].join("\n"),
+    });
+
+    expect(parsed.entry?.description).toBe("First line second line\nNew paragraph");
+  });
+
+  it("parses literal block-scalar descriptions from frontmatter", () => {
+    const parsed = parseSkillFile({
+      filePath: join(root, "literal.md"),
+      baseDir: root,
+      source: "project-pi",
+      content: [
+        "---",
+        "name: literal-description",
+        "description: |",
+        "  First line",
+        "  second line",
+        "",
+        "  Third line",
+        "---",
+        "# Body",
+        "",
+      ].join("\n"),
+    });
+
+    expect(parsed.entry?.description).toBe("First line\nsecond line\n\nThird line");
+  });
+
   it("keeps the first duplicate skill and records a collision diagnostic", () => {
     writeSkill(join(homeDir, ".pi", "agent", "skills", "first", "SKILL.md"), "same-name", "First wins.");
     writeSkill(join(cwd, ".pi", "skills", "second", "SKILL.md"), "same-name", "Second loses.");
@@ -121,6 +165,16 @@ describe("skill registry", () => {
     const snapshot = discover();
 
     expect(snapshot.skills.get("same-name")?.description).toBe("First wins.");
+    expect(snapshot.diagnostics.some((diagnostic) => diagnostic.type === "collision")).toBe(true);
+  });
+
+  it("uses deterministic directory order for duplicate names within one root", () => {
+    writeSkill(join(cwd, ".pi", "skills", "z-last", "SKILL.md"), "same-name", "Z loses.");
+    writeSkill(join(cwd, ".pi", "skills", "a-first", "SKILL.md"), "same-name", "A wins.");
+
+    const snapshot = discover();
+
+    expect(snapshot.skills.get("same-name")?.description).toBe("A wins.");
     expect(snapshot.diagnostics.some((diagnostic) => diagnostic.type === "collision")).toBe(true);
   });
 });

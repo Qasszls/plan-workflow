@@ -5,12 +5,25 @@ import {
   type SkillParams,
 } from "../../src/skill/schema.ts";
 
+interface JsonObjectSchemaShape {
+  type?: string;
+  required?: string[];
+  additionalProperties?: boolean;
+  properties?: {
+    skill?: {
+      type?: string;
+    };
+  };
+}
+
 describe("skill schema", () => {
   it("defines a strict object schema for skill params", () => {
-    expect(SkillParamsSchema.type).toBe("object");
-    expect(SkillParamsSchema.required).toEqual(["skill"]);
-    expect(SkillParamsSchema.additionalProperties).toBe(false);
-    expect(SkillParamsSchema.properties.skill.type).toBe("string");
+    const schema = SkillParamsSchema as JsonObjectSchemaShape;
+
+    expect(schema.type).toBe("object");
+    expect(schema.required).toEqual(["skill"]);
+    expect(schema.additionalProperties).toBe(false);
+    expect(schema.properties?.skill?.type).toBe("string");
   });
 
   it("trims skill names during normalization", () => {

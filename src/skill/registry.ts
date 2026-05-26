@@ -254,7 +254,7 @@ function collectPackageSkillRoots(
 
     let entries: Dirent[];
     try {
-      entries = readdirSync(dir, { withFileTypes: true });
+      entries = sortDirentsByName(readdirSync(dir, { withFileTypes: true }));
     } catch {
       return;
     }
@@ -337,7 +337,7 @@ function collectSkillFiles(dir: string, mode: SkillRootMode): SkillFileCandidate
   function visit(currentDir: string, inheritedIgnoreRules: string[]): void {
     let entries: Dirent[];
     try {
-      entries = readdirSync(currentDir, { withFileTypes: true });
+      entries = sortDirentsByName(readdirSync(currentDir, { withFileTypes: true }));
     } catch {
       return;
     }
@@ -447,8 +447,10 @@ function isIgnored(relativePath: string, rules: string[]): boolean {
 
 function parseSimpleFrontmatter(content: string): Record<string, string> {
   const result: Record<string, string> = {};
+  const lines = content.split(/\r?\n/u);
 
-  for (const line of content.split(/\r?\n/u)) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     const separatorIndex = line.indexOf(":");
     if (separatorIndex === -1) {
       continue;
@@ -456,13 +458,81 @@ function parseSimpleFrontmatter(content: string): Record<string, string> {
 
     const key = line.slice(0, separatorIndex).trim();
     const rawValue = line.slice(separatorIndex + 1).trim();
-    const value = rawValue.replace(/^['"]|['"]$/g, "");
-    if (key) {
-      result[key] = value;
+    if (!key) {
+      continue;
     }
+
+    if (rawValue === ">" || rawValue === "|") {
+      const block = readFrontmatterBlockScalar(lines, index + 1, rawValue);
+      result[key] = block.value;
+      index = block.nextIndex - 1;
+      continue;
+    }
+
+    result[key] = rawValue.replace(/^['"]|['"]$/g, "");
   }
 
   return result;
+}
+
+function readFrontmatterBlockScalar(
+  lines: string[],
+  startIndex: number,
+  indicator: ">" | "|",
+): { value: string; nextIndex: number } {
+  const collected: string[] = [];
+  let index = startIndex;
+  let indentWidth: number | null = null;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    if (line === "") {
+      collected.push("");
+      index += 1;
+      continue;
+    }
+
+    if (!line.startsWith(" ") && !line.startsWith("\t")) {
+      break;
+    }
+
+    indentWidth ??= leadingIndentWidth(line);
+    collected.push(line.slice(Math.min(indentWidth, line.length)));
+    index += 1;
+  }
+
+  return {
+    value: indicator === ">" ? foldBlockScalarLines(collected) : collected.join("\n"),
+    nextIndex: index,
+  };
+}
+
+function foldBlockScalarLines(lines: string[]): string {
+  const paragraphs: string[] = [];
+  let currentParagraph: string[] = [];
+
+  for (const line of lines) {
+    if (line === "") {
+      if (currentParagraph.length > 0) {
+        paragraphs.push(currentParagraph.join(" "));
+        currentParagraph = [];
+      }
+      continue;
+    }
+
+    currentParagraph.push(line);
+  }
+
+  if (currentParagraph.length > 0) {
+    paragraphs.push(currentParagraph.join(" "));
+  }
+
+  return paragraphs.join("\n");
+}
+
+function leadingIndentWidth(line: string): number {
+  const match = line.match(/^[ \t]*/u);
+  return match?.[0].length ?? 0;
 }
 
 function validateSkillName(name: string): string[] {
@@ -486,6 +556,10 @@ function validateSkillName(name: string): string[] {
 
 function shouldSkipDirectoryName(name: string): boolean {
   return name.startsWith(".") || name === "node_modules" || GENERATED_DIR_NAMES.has(name);
+}
+
+function sortDirentsByName(entries: Dirent[]): Dirent[] {
+  return [...entries].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function isFile(filePath: string): boolean {
