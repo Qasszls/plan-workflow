@@ -13,6 +13,7 @@
 ## Source Documents
 
 - Spec: [2026-05-26-plan-workflow-skill-tool-design.md](../../specs/2026-05-26-plan-workflow-skill-tool-design.md)
+- Isolated Pi smoke test environment: [verification.md](verification.md)
 - Existing TodoWrite module: `/Users/liusahngzuo/code/learn/plan-workflow/src/todo/`
 - Pi skill docs used as design reference only: `/Users/liusahngzuo/code/learn/pi/packages/coding-agent/docs/skills.md`
 - Compatibility package used as design reference only: `/Users/liusahngzuo/.pi/agent/npm/node_modules/@uadgj/pi-superpowers-support/src/index.ts`
