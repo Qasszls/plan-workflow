@@ -2,6 +2,12 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { registerTodoCommands } from "./commands.ts";
+import {
+  clearRecentCompletedAndUpdateOverlay,
+  updateTodoOverlay,
+} from "./overlay.ts";
+import { replayTodoStateFromEntries } from "./replay.ts";
 import {
   TodoWriteParamsSchema,
   type TaskSnapshot,
@@ -31,6 +37,11 @@ export function setTodos(
     blockedBy: [...todo.blockedBy],
     metadata: { ...todo.metadata },
   }));
+}
+
+function restoreFromBranch(ctx: ExtensionContext, state: TodoRuntimeState): void {
+  setTodos(state, replayTodoStateFromEntries(ctx.sessionManager.getBranch()));
+  updateTodoOverlay(ctx, state);
 }
 
 export function registerTodoWriteTool(
@@ -103,6 +114,15 @@ function formatTodoWriteSummary(
 
 export function registerTodoWrite(pi: ExtensionAPI): TodoRuntimeState {
   const state = createTodoRuntimeState();
-  registerTodoWriteTool(pi, state, () => {});
+  registerTodoWriteTool(pi, state, (ctx) => updateTodoOverlay(ctx, state));
+  registerTodoCommands(pi, state);
+
+  pi.on("session_start", async (_event, ctx) => restoreFromBranch(ctx, state));
+  pi.on("session_tree", async (_event, ctx) => restoreFromBranch(ctx, state));
+  pi.on("session_compact", async (_event, ctx) => restoreFromBranch(ctx, state));
+  pi.on("agent_start", async (_event, ctx) =>
+    clearRecentCompletedAndUpdateOverlay(ctx, state),
+  );
+
   return state;
 }
