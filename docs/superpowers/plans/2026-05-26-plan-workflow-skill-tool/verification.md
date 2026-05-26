@@ -19,7 +19,9 @@ This is a smoke test for the Pi runtime environment. Unit tests still verify the
 ## Create The Isolated HOME
 
 ```bash
+TMP_HOME_RECORD="/tmp/plan-workflow-skill-smoke-home"
 TMP_HOME="$(mktemp -d)"
+printf '%s\n' "$TMP_HOME" > "$TMP_HOME_RECORD"
 mkdir -p "$TMP_HOME/.pi/agent"
 cp /Users/liusahngzuo/.pi/agent/models.json "$TMP_HOME/.pi/agent/models.json"
 cp /Users/liusahngzuo/.pi/agent/auth.json "$TMP_HOME/.pi/agent/auth.json"
@@ -32,10 +34,42 @@ Why copy these files:
 - `models.json` contains the `gptplus/gpt-5.4-mini` model definition.
 - `auth.json` keeps Pi's auth file shape available.
 - `settings.json` intentionally has an empty `packages` array.
+- `$TMP_HOME_RECORD` lets later shell commands find the temporary HOME even when each command runs in a fresh shell.
+
+## Side Effects And Cleanup
+
+This smoke test should not modify the real `~/.pi` directory. All Pi state created by the test must stay under `$TMP_HOME`.
+
+Expected temporary files:
+
+- `$TMP_HOME/.pi/agent/models.json`
+- `$TMP_HOME/.pi/agent/auth.json`
+- `$TMP_HOME/.pi/agent/settings.json`
+- `$TMP_HOME/.pi/agent/sessions/` if Pi creates session metadata despite `--no-session`
+- `$TMP_HOME/.pi/agent/git/.../skills/...` for the Skill fixture
+
+Required cleanup:
+
+```bash
+TMP_HOME_RECORD="/tmp/plan-workflow-skill-smoke-home"
+TMP_HOME="$(cat "$TMP_HOME_RECORD")"
+rm -rf "$TMP_HOME"
+rm -f "$TMP_HOME_RECORD"
+test ! -e "$TMP_HOME" && echo cleaned
+```
+
+The cleanup command must print:
+
+```text
+cleaned
+```
+
+If cleanup fails, remove the printed temporary directory manually before continuing.
 
 ## Confirm The Environment Is Clean
 
 ```bash
+TMP_HOME="$(cat /tmp/plan-workflow-skill-smoke-home)"
 HOME="$TMP_HOME" PI_OFFLINE=1 pi --list-models gpt-5.4-mini
 HOME="$TMP_HOME" PI_OFFLINE=1 pi list
 ```
@@ -54,6 +88,7 @@ No packages installed.
 Before the `Skill` tool exists, use the existing `TodoWrite` tool to verify the isolated Pi runtime:
 
 ```bash
+TMP_HOME="$(cat /tmp/plan-workflow-skill-smoke-home)"
 HOME="$TMP_HOME" PI_OFFLINE=1 pi \
   --no-extensions \
   --extension /Users/liusahngzuo/code/learn/plan-workflow/src/index.ts \
@@ -80,6 +115,7 @@ This command was tested successfully on 2026-05-26 with `gptplus/gpt-5.4-mini`.
 After the `Skill` tool is implemented, create an isolated package-cache-shaped skill fixture:
 
 ```bash
+TMP_HOME="$(cat /tmp/plan-workflow-skill-smoke-home)"
 mkdir -p "$TMP_HOME/.pi/agent/git/github.com/obra/superpowers/skills/brainstorming"
 cat > "$TMP_HOME/.pi/agent/git/github.com/obra/superpowers/skills/brainstorming/SKILL.md" <<'EOF'
 ---
@@ -96,6 +132,7 @@ EOF
 Then run:
 
 ```bash
+TMP_HOME="$(cat /tmp/plan-workflow-skill-smoke-home)"
 HOME="$TMP_HOME" PI_OFFLINE=1 pi \
   --no-extensions \
   --extension /Users/liusahngzuo/code/learn/plan-workflow/src/index.ts \
@@ -126,7 +163,11 @@ This test exercises the installed Pi git package cache scan without installing t
 Always delete the temporary HOME after the smoke test:
 
 ```bash
+TMP_HOME_RECORD="/tmp/plan-workflow-skill-smoke-home"
+TMP_HOME="$(cat "$TMP_HOME_RECORD")"
 rm -rf "$TMP_HOME"
+rm -f "$TMP_HOME_RECORD"
+test ! -e "$TMP_HOME" && echo cleaned
 ```
 
 Do not leave copied model configuration files in temporary directories.

@@ -14,6 +14,7 @@ The implementation is accepted when `plan-workflow` can provide a Claude Code-co
 - The worktree does not include unrelated staged changes.
 - The real user Pi environment may still contain old packages, but acceptance must use the isolated HOME procedure in [verification.md](verification.md).
 - Use `gptplus/gpt-5.4-mini` for manual smoke tests unless `gptplus/gpt-5.3-codex-spark` is known healthy at test time.
+- The isolated temporary HOME must be deleted after smoke testing, even when a smoke command fails.
 
 ## Automated Acceptance
 
@@ -183,4 +184,5 @@ These failures are not accepted:
 - [ ] Skill smoke passes in isolated HOME after implementation.
 - [ ] No duplicate `Skill` or `TodoWrite` tool conflict appears.
 - [ ] Temporary HOME is deleted after smoke testing.
+- [ ] Cleanup output includes `cleaned`.
 - [ ] Final implementation commits do not include unrelated `.gitignore` or workspace changes.

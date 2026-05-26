@@ -68,6 +68,7 @@ Execute in order:
 4. [Task 4: Load and format skill content](task-04-content.md)
 5. [Task 5: Register the Skill tool](task-05-tool.md)
 6. [Task 6: Wire extension entrypoint and verify](task-06-integration.md)
+7. [Task 7: Execute acceptance plan](task-07-acceptance.md)
 
 ## Execution Notes
 
