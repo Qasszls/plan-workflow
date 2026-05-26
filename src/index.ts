@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { registerTodoWrite } from "./todo/tool.ts";
 
-export default function planWorkflow(_pi: ExtensionAPI): void {
-  // Task 5 replaces this stub with TodoWrite registration.
+export default function planWorkflow(pi: ExtensionAPI): void {
+  registerTodoWrite(pi);
 }
