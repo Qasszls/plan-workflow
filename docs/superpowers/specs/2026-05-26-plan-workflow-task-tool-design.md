@@ -40,7 +40,7 @@ In scope:
 - Reuse Pi's current effective system prompt instead of rebuilding tool/skill/docs context.
 - Return model-visible markdown `content` and structured `details`.
 - Render collapsed and expanded TUI results.
-- Test pure parsing, prompt assembly, JSON event aggregation, and orchestration.
+- Test pure parsing, child CLI argument assembly, JSON event aggregation, and orchestration.
 
 Out of scope:
 
@@ -152,25 +152,9 @@ Pi already builds the child runtime system prompt from:
 - Pi docs/readme/examples guidance
 - current date and working directory
 
-`Task` should not override that system prompt. It should use Pi's native `--append-system-prompt` support to add named-agent instructions.
+`Task` should not override that system prompt. It should use Pi's native `--append-system-prompt` support to add named-agent instructions by passing the discovered `agent.md` absolute path directly.
 
-For a named agent, create an append prompt:
-
-```md
-# Subagent role
-
-Name: <agent name>
-Description: <agent description>
-
-<agent markdown body>
-
-# Tool boundary
-
-This subagent is limited to these tools:
-<agent tools or "default active tools">
-```
-
-Pass that append prompt to the child process with `--append-system-prompt`.
+Pi's resource loader treats a `--append-system-prompt` argument as file contents when the argument is an existing path. The Task tool already discovers the agent file path, so it must pass that path to Pi instead of reading the file, rewriting the prompt, or creating a temporary prompt file.
 
 For a default child session, do not pass `--append-system-prompt`.
 
@@ -194,16 +178,16 @@ Pi-native `--tools` behavior:
 Each task starts an isolated Pi child process:
 
 ```bash
-pi --mode json -p --no-session [--append-system-prompt <agent-prompt-file>] [--model <model>] [--tools <tools>] "Task: <prompt>"
+pi --mode json -p --no-session [--append-system-prompt <agent.md absolute path>] [--model <model>] [--tools <tools>] "Task: <prompt>"
 ```
 
 Implementation should preserve the Pi subagent example's robust process behavior:
 
 - Use the current runtime invocation when possible.
 - Fall back to `pi`.
-- Write named-agent append prompts to temporary files.
-- Reuse one temporary append prompt file per unique named agent within a single `Task` call.
-- Clean up temporary append prompt files after all child processes finish.
+- Pass named-agent `agent.filePath` directly to `--append-system-prompt`.
+- Pass the task prompt as the normal `-p` prompt string.
+- Do not generate temporary prompt files.
 - Pipe stdout and stderr.
 - Respect the parent tool abort signal.
 - Kill with `SIGTERM`, then `SIGKILL` after a grace period if needed.
@@ -360,7 +344,6 @@ Create:
 src/task/
   schema.ts
   discovery.ts
-  prompt.ts
   runner.ts
   orchestrator.ts
   render.ts
@@ -371,8 +354,7 @@ Responsibilities:
 
 - `schema.ts`: Typebox params, runtime result/detail types, validators.
 - `discovery.ts`: Pi-native agent markdown discovery and frontmatter normalization.
-- `prompt.ts`: assemble named-agent append prompt from agent metadata/body and declared tool boundary.
-- `runner.ts`: spawn child Pi process and parse JSON stream into `TaskRunResult`.
+- `runner.ts`: spawn child Pi process, pass named-agent `agent.md` path to `--append-system-prompt`, pass task prompt as `-p` text, and parse JSON stream into `TaskRunResult`.
 - `orchestrator.ts`: validate task array, run one or many tasks with concurrency, aggregate statuses.
 - `render.ts`: markdown content and TUI render helpers.
 - `tool.ts`: `pi.registerTool("Task", ...)`.
@@ -401,14 +383,10 @@ Discovery tests:
 - Ignore files missing `name` or `description`.
 - Normalize `tools` from comma string or string array.
 
-Prompt tests:
-
-- Default task creates no append prompt.
-- Named prompt puts agent body in the append prompt.
-- Named prompt includes tool boundary text.
-
 Runner tests:
 
+- Build child Pi args with named-agent `agent.md` path after `--append-system-prompt`.
+- Build child Pi args with the delegated task as the normal `-p` prompt string.
 - Parse fake JSON lines into messages.
 - Extract final assistant text.
 - Aggregate usage.
@@ -438,4 +416,4 @@ The implementation is complete when:
 - `content` is readable markdown for the parent model.
 - `details` preserves complete structured task records.
 - A failed child task marks the overall tool result as `isError: true`.
-- Tests pass for discovery, prompt assembly, stream parsing, orchestration, and tool registration.
+- Tests pass for discovery, child CLI argument assembly, stream parsing, orchestration, and tool registration.
