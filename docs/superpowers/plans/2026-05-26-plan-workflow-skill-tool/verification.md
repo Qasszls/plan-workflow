@@ -16,6 +16,17 @@ The goal is to verify extension loading in a clean Pi environment without using 
 
 This is a smoke test for the Pi runtime environment. Unit tests still verify the tool's pure behavior.
 
+## Relationship To Acceptance
+
+This file is the reusable environment recipe. The acceptance task uses it directly:
+
+- Acceptance criteria: [acceptance.md](acceptance.md)
+- Executable acceptance task: [task-07-acceptance.md](task-07-acceptance.md)
+
+Keep this document procedural and self-contained. It is intentionally written so it can later be extracted into a reusable skill for testing Pi extensions in an isolated HOME.
+
+The most important rule is cleanup: every run creates a temporary HOME, and that directory must be deleted after the smoke test.
+
 ## Create The Isolated HOME
 
 ```bash
