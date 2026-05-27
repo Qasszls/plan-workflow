@@ -65,6 +65,13 @@ describe("task rendering", () => {
         "Summary here.",
       ].join("\n"),
     );
+
+    expect(
+      formatTaskExecutionContent({
+        version: 1,
+        results: [result({ status: "running", exitCode: -1, finalOutput: "Working..." })],
+      }),
+    ).toContain("- Status: running");
   });
 
   it("uses error text when a failed task has no final output", () => {
@@ -97,6 +104,15 @@ describe("task rendering", () => {
     const output = `${"a".repeat(20)}\n${"b".repeat(20)}`;
 
     expect(truncateOutput(output, 25)).toBe("aaaaaaaaaaaaaaaaaaaa\nbbbb\n\n[Output truncated: 16 characters omitted. Full output preserved in tool details.]");
+  });
+
+  it("formats running summaries for collapsed TUI display", () => {
+    const summary = formatTaskResultSummary({
+      version: 1,
+      results: [result({ status: "running", exitCode: -1, finalOutput: "" })],
+    });
+
+    expect(summary).toBe("Task running: 1 running.");
   });
 
   it("formats result summaries for collapsed TUI display", () => {

@@ -67,8 +67,13 @@ export function formatTaskExecutionContent(details: TaskDetails): string {
 }
 
 export function formatTaskResultSummary(details: TaskDetails): string {
-  const counts = { completed: 0, failed: 0, aborted: 0 };
+  const counts = { running: 0, completed: 0, failed: 0, aborted: 0 };
   for (const result of details.results) counts[result.status] += 1;
+
+  if (counts.running > 0) {
+    return `Task running: ${counts.running} running.`;
+  }
+
   return `Task finished: ${counts.completed} completed, ${counts.failed} failed, ${counts.aborted} aborted.`;
 }
 
