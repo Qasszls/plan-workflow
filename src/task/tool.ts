@@ -41,8 +41,8 @@ function isFailedTaskDetails(details: TaskDetails): boolean {
   return details.results.some((result) => result.status !== "running" && isFailedTaskRunResult(result));
 }
 
-function isTaskErrorContent(content: AgentToolResult<TaskDetails>["content"]): boolean {
-  return content.some((part) => part.type === "text" && part.text.startsWith("Task error:"));
+function isTaskErrorContent(content: AgentToolResult<TaskDetails>["content"] | undefined): boolean {
+  return (content ?? []).some((part) => part.type === "text" && part.text.startsWith("Task error:"));
 }
 
 function buildTaskResult(details: TaskDetails, isError = isFailedTaskDetails(details)): TaskToolResult {

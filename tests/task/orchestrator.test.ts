@@ -203,6 +203,8 @@ describe("task orchestration", () => {
 
     expect(updates[0].results[0].status).toBe("running");
     expect(updates[0].results[0].finalOutput).toBe("working");
+    expect(updates.at(-1)?.results[0].status).toBe("completed");
+    expect(updates.at(-1)?.results[0].finalOutput).toBe("done");
     expect(execution.details.results[0].status).toBe("completed");
     expect(execution.details.results.some((result) => result.status === "running")).toBe(false);
   });

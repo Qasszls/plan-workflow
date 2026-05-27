@@ -197,6 +197,26 @@ describe("Task tool registration", () => {
     expect(result).toEqual({ isError: false });
   });
 
+  it("does not throw when Task tool_result events omit content", async () => {
+    const handlers: Record<string, Function[]> = {};
+    registerTaskTool({
+      registerTool() {},
+      on(event: string, handler: Function) {
+        handlers[event] = [...(handlers[event] ?? []), handler];
+      },
+    } as never);
+
+    const result = await handlers.tool_result[0]({
+      toolName: "Task",
+      details: {
+        version: 1,
+        results: [runningResultFor({ description: "Default", prompt: "Do it." })],
+      },
+    });
+
+    expect(result).toEqual({ isError: false });
+  });
+
   it("promotes Task normalization errors to runtime errors", async () => {
     const handlers: Record<string, Function[]> = {};
     registerTaskTool({
