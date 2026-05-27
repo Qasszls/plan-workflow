@@ -11,28 +11,29 @@ import { replayTodoStateFromEntries } from "./replay.ts";
 import {
   TodoWriteParamsSchema,
   type TaskSnapshot,
+  type TodoStateSnapshot,
   type TodoWriteParams,
 } from "./schema.ts";
 import {
   buildDetails,
-  computeRecentCompletedIds,
   normalizeTodoWrite,
 } from "./state.ts";
 
 export interface TodoRuntimeState {
+  summary?: string;
   todos: TaskSnapshot[];
-  recentCompletedIds: Set<string>;
 }
 
 export function createTodoRuntimeState(): TodoRuntimeState {
-  return { todos: [], recentCompletedIds: new Set() };
+  return { todos: [] };
 }
 
-export function setTodos(
+export function setTodoSnapshot(
   state: TodoRuntimeState,
-  todos: TaskSnapshot[],
+  snapshot: TodoStateSnapshot,
 ): void {
-  state.todos = todos.map((todo) => ({
+  state.summary = snapshot.summary;
+  state.todos = snapshot.todos.map((todo) => ({
     ...todo,
     blockedBy: [...todo.blockedBy],
     metadata: { ...todo.metadata },
@@ -40,7 +41,10 @@ export function setTodos(
 }
 
 function restoreFromBranch(ctx: ExtensionContext, state: TodoRuntimeState): void {
-  setTodos(state, replayTodoStateFromEntries(ctx.sessionManager.getBranch()));
+  setTodoSnapshot(
+    state,
+    replayTodoStateFromEntries(ctx.sessionManager.getBranch()),
+  );
   updateTodoOverlay(ctx, state);
 }
 
@@ -63,7 +67,10 @@ export function registerTodoWriteTool(
     async execute(_toolCallId, params: TodoWriteParams, _signal, _onUpdate, ctx) {
       const normalized = normalizeTodoWrite(params);
       if (!normalized.ok) {
-        const details = buildDetails({ todos: state.todos }, normalized.error);
+        const details = buildDetails(
+          { summary: state.summary, todos: state.todos },
+          normalized.error,
+        );
         return {
           content: [
             { type: "text", text: `TodoWrite error: ${normalized.error}` },
@@ -73,18 +80,10 @@ export function registerTodoWriteTool(
         };
       }
 
-      const newlyCompleted = computeRecentCompletedIds(
-        state.todos,
-        normalized.snapshot.todos,
-      );
-      setTodos(state, normalized.snapshot.todos);
-      for (const id of newlyCompleted) state.recentCompletedIds.add(id);
+      setTodoSnapshot(state, normalized.snapshot);
       updateOverlay(ctx);
 
-      const details = buildDetails({
-        summary: normalized.snapshot.summary,
-        todos: state.todos,
-      });
+      const details = buildDetails({ summary: state.summary, todos: state.todos });
       return {
         content: [
           { type: "text", text: formatTodoWriteSummary(details.stats, state.todos) },
@@ -123,9 +122,6 @@ export function registerTodoWrite(pi: ExtensionAPI): TodoRuntimeState {
   pi.on("session_start", async (_event, ctx) => restoreFromBranch(ctx, state));
   pi.on("session_tree", async (_event, ctx) => restoreFromBranch(ctx, state));
   pi.on("session_compact", async (_event, ctx) => restoreFromBranch(ctx, state));
-  pi.on("agent_start", async (_event, ctx) =>
-    clearRecentCompletedAndUpdateOverlay(ctx, state),
-  );
 
   return state;
 }

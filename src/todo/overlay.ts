@@ -8,7 +8,7 @@ export function updateTodoOverlay(
   ctx: ExtensionContext,
   state: TodoRuntimeState,
 ): void {
-  const lines = formatTodosForOverlay(state.todos, state.recentCompletedIds);
+  const lines = formatTodosForOverlay(state.todos, new Set());
   ctx.ui.setWidget(WIDGET_KEY, lines, {
     placement: "aboveEditor",
   });
@@ -18,6 +18,5 @@ export function clearRecentCompletedAndUpdateOverlay(
   ctx: ExtensionContext,
   state: TodoRuntimeState,
 ): void {
-  state.recentCompletedIds.clear();
   updateTodoOverlay(ctx, state);
 }

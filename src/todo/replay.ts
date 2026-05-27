@@ -1,4 +1,4 @@
-import type { TaskSnapshot } from "./schema.ts";
+import type { TaskSnapshot, TodoStateSnapshot } from "./schema.ts";
 import { isTodoWriteDetails } from "./schema.ts";
 
 const TODO_TOOL_NAME = "TodoWrite";
@@ -14,8 +14,8 @@ interface MaybeSessionEntry {
 
 export function replayTodoStateFromEntries(
   entries: readonly unknown[],
-): TaskSnapshot[] {
-  let latest: TaskSnapshot[] = [];
+): TodoStateSnapshot {
+  let latest: TodoStateSnapshot = { todos: [] };
 
   for (const entry of entries) {
     const candidate = entry as MaybeSessionEntry;
@@ -30,11 +30,15 @@ export function replayTodoStateFromEntries(
       continue;
     if (!isTodoWriteDetails(message.details)) continue;
 
-    latest = message.details.todos.map((todo) => ({
+    const todos: TaskSnapshot[] = message.details.todos.map((todo) => ({
       ...todo,
       blockedBy: [...todo.blockedBy],
       metadata: { ...todo.metadata },
     }));
+    latest = {
+      ...(message.details.summary ? { summary: message.details.summary } : {}),
+      todos,
+    };
   }
 
   return latest;
