@@ -3,10 +3,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { registerTodoCommands } from "./commands.ts";
-import {
-  clearRecentCompletedAndUpdateOverlay,
-  updateTodoOverlay,
-} from "./overlay.ts";
+import { updateTodoOverlay } from "./overlay.ts";
 import { replayTodoStateFromEntries } from "./replay.ts";
 import {
   TodoWriteParamsSchema,
@@ -98,18 +95,16 @@ function formatTodoWriteSummary(
   stats: ReturnType<typeof buildDetails>["stats"],
   todos: TaskSnapshot[],
 ): string {
-  const lines = [
-    `Todos updated: ${stats.inProgress} in progress, ${stats.pending} pending, ${stats.completed} completed.`,
-  ];
-  const current = todos
-    .filter(
-      (todo) => todo.status === "in_progress" || todo.status === "pending",
-    )
-    .slice(0, 8);
+  const total = todos.filter((todo) => todo.status !== "deleted").length;
+  const lines = [`Todos updated: ${stats.completed}/${total} completed.`];
+  const current = todos.filter((todo) => todo.status !== "deleted").slice(0, 8);
 
   if (current.length > 0) {
     lines.push("Current:");
-    for (const todo of current) lines.push(`- ${todo.status}: ${todo.content}`);
+    for (const todo of current) {
+      const marker = todo.status === "completed" ? "✓" : "-";
+      lines.push(`${marker} ${todo.content}`);
+    }
   }
   return lines.join("\n");
 }
