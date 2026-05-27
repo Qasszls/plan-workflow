@@ -44,3 +44,5 @@ provider disabled:
 - Skill support
 - AskUserQuestion support
 - workflow prompts and skills
+
+pi 文档 /Users/liusahngzuo/code/learn/pi/packages/coding-agent/docs/\*.md
