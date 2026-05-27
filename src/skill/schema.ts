@@ -25,18 +25,34 @@ export type NormalizeSkillParamsResult =
 export function normalizeSkillParams(
   params: unknown,
 ): NormalizeSkillParamsResult {
-  if (
-    !isRecord(params) ||
-    !Array.isArray(params.skills) ||
-    Object.keys(params).some((key) => key !== "skills")
-  ) {
-    if (isRecord(params) && Object.keys(params).some((key) => key !== "skills")) {
+  if (!isRecord(params)) {
+    return { ok: false, error: "skills must be an array of skill names" };
+  }
+
+  const keys = Object.keys(params);
+  const hasSkills = Object.hasOwn(params, "skills");
+  const hasSkill = Object.hasOwn(params, "skill");
+
+  if (hasSkill && !hasSkills && keys.length === 1) {
+    return normalizeSkillArray([params.skill]);
+  }
+
+  if (!hasSkills || !Array.isArray(params.skills)) {
+    if (keys.some((key) => key !== "skills")) {
       return { ok: false, error: "skills params must not include extra properties" };
     }
     return { ok: false, error: "skills must be an array of skill names" };
   }
 
-  if (params.skills.length === 0) {
+  if (keys.some((key) => key !== "skills")) {
+    return { ok: false, error: "skills params must not include extra properties" };
+  }
+
+  return normalizeSkillArray(params.skills);
+}
+
+function normalizeSkillArray(values: unknown[]): NormalizeSkillParamsResult {
+  if (values.length === 0) {
     return {
       ok: false,
       error: "skills must contain at least one skill name",
@@ -46,7 +62,7 @@ export function normalizeSkillParams(
   const skills: string[] = [];
   const seen = new Set<string>();
 
-  for (const [index, value] of params.skills.entries()) {
+  for (const [index, value] of values.entries()) {
     if (typeof value !== "string") {
       return { ok: false, error: `skills[${index}] must be a string` };
     }
@@ -65,6 +81,6 @@ export function normalizeSkillParams(
   return { ok: true, skills };
 }
 
-function isRecord(value: unknown): value is { skills?: unknown } {
+function isRecord(value: unknown): value is { skills?: unknown; skill?: unknown } {
   return typeof value === "object" && value !== null;
 }

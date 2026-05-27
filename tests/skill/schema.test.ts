@@ -43,6 +43,32 @@ describe("skill schema", () => {
     });
   });
 
+  it("normalizes Claude Code-style single skill params", () => {
+    expect(normalizeSkillParams({ skill: "brainstorming" })).toEqual({
+      ok: true,
+      skills: ["brainstorming"],
+    });
+    expect(normalizeSkillParams({ skill: "  using-superpowers  " })).toEqual({
+      ok: true,
+      skills: ["using-superpowers"],
+    });
+  });
+
+  it("rejects invalid Claude Code-style single skill params", () => {
+    expect(normalizeSkillParams({ skill: "" })).toEqual({
+      ok: false,
+      error: "skills[0] must not be blank",
+    });
+    expect(normalizeSkillParams({ skill: "   " })).toEqual({
+      ok: false,
+      error: "skills[0] must not be blank",
+    });
+    expect(normalizeSkillParams({ skill: 1 })).toEqual({
+      ok: false,
+      error: "skills[0] must be a string",
+    });
+  });
+
   it("rejects missing or non-array skills", () => {
     expect(normalizeSkillParams({})).toEqual({
       ok: false,
@@ -54,10 +80,14 @@ describe("skill schema", () => {
     });
   });
 
-  it("rejects extra properties", () => {
+  it("rejects extra and ambiguous properties", () => {
     expect(
       normalizeSkillParams({ skills: ["brainstorming"], skill: "old" }),
     ).toEqual({
+      ok: false,
+      error: "skills params must not include extra properties",
+    });
+    expect(normalizeSkillParams({ skill: "old", extra: true })).toEqual({
       ok: false,
       error: "skills params must not include extra properties",
     });
