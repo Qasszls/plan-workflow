@@ -46,7 +46,7 @@ describe("task runner JSON parsing", () => {
       prompt: "Review the diff.",
       agent: "reviewer",
       agentFilePath: "/tmp/reviewer.md",
-      status: "failed",
+      status: "running",
       finalOutput: "",
       messages: [],
       stderr: "",
@@ -225,6 +225,36 @@ describe("task runner JSON parsing", () => {
     expect(result.exitCode).toBe(0);
     expect(result.finalOutput).toBe("done");
     expect(updates.at(-1)).toBe("done");
+  });
+
+  it("emits running partial updates before child completion", async () => {
+    const child = new FakeChildProcess();
+    const updates: Array<{ status: string; finalOutput: string }> = [];
+    const execution = runTaskChildProcess({
+      request,
+      defaultCwd: "/tmp/project",
+      agentName: "reviewer",
+      spawnChild: () => child as never,
+      onUpdate: (result) => updates.push({ status: result.status, finalOutput: result.finalOutput }),
+    });
+
+    child.writeStdout(
+      `${JSON.stringify({
+        type: "message_end",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "working" }],
+          usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, cost: { total: 0 }, totalTokens: 2 },
+          stopReason: "toolUse",
+        },
+      })}\n`,
+    );
+
+    expect(updates).toEqual([{ status: "running", finalOutput: "working" }]);
+
+    child.close(0);
+    const result = await execution;
+    expect(result.status).toBe("completed");
   });
 
   it("marks signal-only child exits as failed", async () => {

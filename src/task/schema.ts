@@ -21,7 +21,7 @@ export const TaskParamsSchema = Type.Object({
 export type TaskRequest = Static<typeof TaskRequestSchema>;
 export type TaskParams = Static<typeof TaskParamsSchema>;
 
-export type TaskRunStatus = "completed" | "failed" | "aborted";
+export type TaskRunStatus = "running" | "completed" | "failed" | "aborted";
 
 export interface UsageStats {
   input: number;
@@ -98,5 +98,6 @@ export function buildEmptyTaskDetails(): TaskDetails {
 }
 
 export function isFailedTaskRunResult(result: TaskRunResult): boolean {
+  if (result.status === "running") return false;
   return result.status !== "completed" || result.exitCode !== 0 || result.stopReason === "error";
 }

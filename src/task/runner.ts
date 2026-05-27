@@ -74,7 +74,7 @@ export function createInitialTaskRunResult(
     prompt: request.prompt,
     agent,
     ...(agentFilePath ? { agentFilePath } : {}),
-    status: "failed",
+    status: "running",
     finalOutput: "",
     messages: [],
     stderr: "",
