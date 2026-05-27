@@ -35,7 +35,7 @@ In scope:
 - Load all requested skills independently.
 - Return successful skill content and failed skill diagnostics in one markdown response.
 - Treat partial failures as a successful tool call with inline error blocks.
-- Treat invalid parameters or all failed skill requests as tool errors.
+- Treat only invalid parameters as tool errors.
 - Update TUI rendering to summarize single-skill and multi-skill results.
 - Update tests for the new contract.
 
@@ -77,9 +77,13 @@ Skill({ skills: ["vue", "vite", "vitest"] })
 
 Old calls such as `Skill({ skill: "vue" })` are intentionally not part of the new contract. Migrating existing prompts, docs, and examples is a small mechanical replacement and can be handled separately by a cheaper model or script.
 
+This is a breaking change by design. The new `skills` contract replaces the old `skill` contract instead of adding a compatibility window.
+
+This spec also supersedes the old schema/result-format stability note in `docs/superpowers/specs/2026-05-26-plan-workflow-skill-tool-design.md`. Future Pi API migration work should preserve this spec's `skills` parameter shape and aggregate result details.
+
 ## Normalization
 
-`normalizeSkillParams` should return one normalized list:
+`normalizeSkillParams` should accept `unknown` and return one normalized list. It should not rely only on TypeBox/Pi validation because tests and direct callers can exercise it without the tool runtime:
 
 ```ts
 type NormalizeSkillParamsResult =
@@ -97,6 +101,15 @@ Validation should fail when:
 
 Duplicate names should be removed after trimming while preserving first-seen order. This keeps the output concise and prevents accidental duplicate context loading.
 
+Parameter error messages should be stable:
+
+- Missing or non-array `skills`: `skills must be an array of skill names`
+- Empty `skills`: `skills must contain at least one skill name`
+- Non-string item: `skills[N] must be a string`
+- Blank item after trimming: `skills[N] must not be blank`
+
+The tool wraps these messages as `Skill error: <message>`.
+
 ## Execution Flow
 
 For a valid request:
@@ -107,8 +120,8 @@ For a valid request:
    - If the file cannot be read, record a read failure.
    - Otherwise record a successful loaded skill with formatted content and line count.
 3. Build one markdown response from all per-skill outcomes.
-4. Return `isError: true` only when every requested skill failed.
-5. Return a non-error result when at least one skill loaded successfully.
+4. Return `isError: true` only for invalid parameters.
+5. Return a non-error result for valid parameters, even when every requested skill failed to load.
 
 This preserves the most useful behavior for agents: successfully loaded skills enter context even when another requested skill name was wrong.
 
@@ -124,7 +137,7 @@ A successful loaded skill block should be headed by a short summary line:
 </skill>
 ```
 
-Multiple outcomes are separated by a markdown horizontal rule:
+Multiple outcomes are separated by a markdown horizontal rule. Output order must follow the normalized request order after duplicate removal, including failure blocks:
 
 ```md
 [skill] vue (180 lines)
@@ -189,22 +202,28 @@ interface SkillToolDetails {
 
 `availableSkills` should be included when at least one requested skill is missing. Registry diagnostics should stay summarized with the existing `summarizeDiagnostics` helper.
 
+`failed[].error` stores the raw reason, such as `Skill "missing-skill" not found.` or `failed to read skill file: ...`. Markdown rendering may wrap the raw reason in a more readable block, but the detail payload should stay concise and machine-friendly.
+
 ## Error Semantics
 
-Parameter errors are hard errors:
+Parameter errors are tool-call errors:
 
 - blank array
 - non-string entries
 - empty trimmed names
 
-Lookup and read errors are per-skill failures:
+Lookup and read errors are per-skill outcomes:
 
 - If at least one skill succeeds, the tool result is not an error.
-- If all skills fail, the tool result is an error.
+- If all skills fail, the tool result is still not an error.
 
-This means `Skill({ skills: ["vue", "missing"] })` returns usable Vue instructions plus a visible missing-skill block, while `Skill({ skills: ["missing"] })` returns an error.
+Tool-call errors are reserved for invalid parameters. Skill lookup and read failures mean the tool ran successfully but some or all requested skills could not be loaded. This avoids hiding per-skill failure diagnostics behind Pi/tool error handling.
+
+This means `Skill({ skills: ["vue", "missing"] })` returns usable Vue instructions plus a visible missing-skill block, while `Skill({ skills: ["missing"] })` returns a normal tool result containing a missing-skill block.
 
 ## TUI Rendering
+
+TUI rendering should stay close to the current behavior.
 
 Single successful skill:
 
@@ -218,10 +237,10 @@ Multiple skills with at least one success:
 [skill] 3 requested, 2 loaded, 1 failed
 ```
 
-All failed:
+If no skill loads, keep the old error-style display for the first failure rather than showing a new batch summary:
 
 ```text
-[skill] 2 requested, 0 loaded, 2 failed
+Skill "missing-skill" not found.
 ```
 
 Parameter errors can keep the existing error text rendering path.
@@ -237,9 +256,9 @@ Update `tests/skill/tool.test.ts` to cover:
 - Blank array returns a parameter error.
 - Blank string item returns a parameter error.
 - Missing skill in a mixed request returns a non-error result with one success and one error block.
-- Missing-only request returns `isError: true`.
+- Missing-only request returns a non-error result with one error block.
 - Read failure in a mixed request returns a non-error result if another skill loads.
-- Read-failure-only request returns `isError: true`.
+- Read-failure-only request returns a non-error result with one error block.
 - Render output summarizes single and multi-skill results.
 
 No registry tests need to change unless type changes require updated fixtures.
