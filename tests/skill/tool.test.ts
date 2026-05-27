@@ -84,6 +84,17 @@ describe("Skill tool", () => {
     return tools[0];
   }
 
+  function testTheme() {
+    return {
+      fg(_name: string, text: string) {
+        return text.replace(/\x1b\[[0-9;]*m/g, "");
+      },
+      bg(_name: string, text: string) {
+        return text;
+      },
+    };
+  }
+
   it("registers a Skill tool with strict batch params", () => {
     const tool = registerWithSnapshot();
 
@@ -146,6 +157,59 @@ describe("Skill tool", () => {
       "vitest",
       "brainstorming",
     ]);
+  });
+
+  it("renders a single loaded skill with the existing compact label", async () => {
+    const tool = registerWithSnapshot();
+    const result = await tool.execute(
+      "call-1",
+      { skills: ["brainstorming"] },
+      undefined,
+      undefined,
+      { cwd: root },
+    );
+
+    const rendered = tool.renderResult(result, undefined, testTheme(), {
+      isError: false,
+    });
+
+    expect(rendered.children[0].text).toBe("[skill] brainstorming (5 lines)");
+  });
+
+  it("renders multiple outcomes with a loaded/failed summary when something loaded", async () => {
+    const tool = registerWithSnapshot();
+    const result = await tool.execute(
+      "call-1",
+      { skills: ["brainstorming", "missing", "vitest"] },
+      undefined,
+      undefined,
+      { cwd: root },
+    );
+
+    const rendered = tool.renderResult(result, undefined, testTheme(), {
+      isError: false,
+    });
+
+    expect(rendered.children[0].text).toBe(
+      "[skill] 3 requested, 2 loaded, 1 failed",
+    );
+  });
+
+  it("renders the first failure as error text when no skill loaded", async () => {
+    const tool = registerWithSnapshot();
+    const result = await tool.execute(
+      "call-1",
+      { skills: ["missing"] },
+      undefined,
+      undefined,
+      { cwd: root },
+    );
+
+    const rendered = tool.renderResult(result, undefined, testTheme(), {
+      isError: false,
+    });
+
+    expect(rendered.text).toContain('Skill "missing" not found.');
   });
 
   it("loads duplicate skill names once", async () => {

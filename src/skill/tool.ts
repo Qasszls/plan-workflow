@@ -139,7 +139,10 @@ export function registerSkillTool(
 
       const firstFailure = details.failed[0];
       return new Text(
-        theme.fg("error", firstFailure?.error ?? "Skill failed."),
+        theme.fg(
+          "error",
+          firstFailure ? renderFailureText(firstFailure) : "Skill failed.",
+        ),
         0,
         0,
       );
@@ -223,4 +226,12 @@ function buildReadFailureText(skillName: string, error: string): string {
   return [`[skill:error] ${skillName}`, "", `Error loading skill "${skillName}": ${error}`].join(
     "\n",
   );
+}
+
+function renderFailureText(detail: FailedSkillDetail): string {
+  if (detail.reason === "read_error") {
+    return `Error loading skill "${detail.skillName}": ${detail.error}`;
+  }
+
+  return detail.error;
 }
