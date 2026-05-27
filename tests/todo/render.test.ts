@@ -60,6 +60,15 @@ const morningTodos: TaskSnapshot[] = [
   },
 ];
 
+function withStatuses(
+  statuses: Record<string, TaskSnapshot["status"]>,
+): TaskSnapshot[] {
+  return morningTodos.map((todo) => ({
+    ...todo,
+    status: statuses[todo.id] ?? todo.status,
+  }));
+}
+
 describe("todo rendering", () => {
   it("formats /todos output without deleted tasks by default", () => {
     expect(formatTodosForCommand(tasks)).toContain("in_progress");
@@ -112,5 +121,52 @@ describe("todo rendering", () => {
 
     expect(lines).not.toContain("- 旧任务");
     expect(lines?.[1]).toBe("0/3");
+  });
+
+  it("covers create, complete first, complete third, rebuild, complete second and restore first", () => {
+    const created = formatTodosForOverlay("早会", morningTodos);
+    expect(created).toEqual([
+      "早会",
+      "0/3",
+      "- 同步昨日工作进展与已完成事项",
+      "- 确认今日重点任务与负责人",
+      "- 识别阻塞问题并约定解决方案/跟进人",
+    ]);
+
+    const firstCompletedTodos = withStatuses({ sync: "completed" });
+    expect(formatTodosForOverlay("早会", firstCompletedTodos)).toEqual([
+      "早会",
+      "1/3",
+      "✓ ~~同步昨日工作进展与已完成事项~~",
+      "- 确认今日重点任务与负责人",
+      "- 识别阻塞问题并约定解决方案/跟进人",
+    ]);
+
+    const thirdCompletedTodos = withStatuses({
+      sync: "completed",
+      blockers: "completed",
+    });
+    const rebuilt = formatTodosForOverlay("早会", thirdCompletedTodos);
+    expect(rebuilt).toEqual([
+      "早会",
+      "2/3",
+      "✓ ~~同步昨日工作进展与已完成事项~~",
+      "- 确认今日重点任务与负责人",
+      "✓ ~~识别阻塞问题并约定解决方案/跟进人~~",
+    ]);
+
+    const secondCompletedFirstRestored = withStatuses({
+      focus: "completed",
+      blockers: "completed",
+    });
+    expect(
+      formatTodosForOverlay("早会", secondCompletedFirstRestored),
+    ).toEqual([
+      "早会",
+      "2/3",
+      "- 同步昨日工作进展与已完成事项",
+      "✓ ~~确认今日重点任务与负责人~~",
+      "✓ ~~识别阻塞问题并约定解决方案/跟进人~~",
+    ]);
   });
 });

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDetails,
-  computeRecentCompletedIds,
   normalizeTodoWrite,
   summarizeStats,
 } from "../../src/todo/state.ts";
@@ -129,21 +128,6 @@ describe("todo state", () => {
       completed: 1,
       deleted: 1,
     });
-  });
-
-  it("detects newly completed ids", () => {
-    const previous = normalizeTodoWrite({
-      todos: [{ id: "a", content: "One", status: "in_progress" }],
-    });
-    const next = normalizeTodoWrite({
-      todos: [{ id: "a", content: "One", status: "completed" }],
-    });
-
-    expect(
-      previous.ok && next.ok
-        ? computeRecentCompletedIds(previous.snapshot.todos, next.snapshot.todos)
-        : [],
-    ).toEqual(["a"]);
   });
 
   it("builds replayable details", () => {

@@ -27,6 +27,48 @@ function toolResult(toolName: string, details: unknown) {
   };
 }
 
+function morningDetails(
+  summary: string,
+  statuses: Record<string, "pending" | "completed">,
+): TodoWriteDetails {
+  const todos = [
+    {
+      id: "sync",
+      content: "同步昨日工作进展与已完成事项",
+      status: statuses.sync,
+      blockedBy: [],
+      metadata: {},
+    },
+    {
+      id: "focus",
+      content: "确认今日重点任务与负责人",
+      status: statuses.focus,
+      blockedBy: [],
+      metadata: {},
+    },
+    {
+      id: "blockers",
+      content: "识别阻塞问题并约定解决方案/跟进人",
+      status: statuses.blockers,
+      blockedBy: [],
+      metadata: {},
+    },
+  ] satisfies TodoWriteDetails["todos"];
+
+  return {
+    version: 1,
+    action: "replace",
+    summary,
+    todos,
+    stats: {
+      pending: todos.filter((todo) => todo.status === "pending").length,
+      inProgress: 0,
+      completed: todos.filter((todo) => todo.status === "completed").length,
+      deleted: 0,
+    },
+  };
+}
+
 describe("todo replay", () => {
   it("returns empty state for an empty branch", () => {
     expect(replayTodoStateFromEntries([])).toEqual({ todos: [] });
@@ -108,5 +150,38 @@ describe("todo replay", () => {
         },
       ],
     });
+  });
+
+  it("rebuilds the latest morning todo lifecycle snapshot", () => {
+    const result = replayTodoStateFromEntries([
+      toolResult(
+        "TodoWrite",
+        morningDetails("早会", {
+          sync: "pending",
+          focus: "pending",
+          blockers: "pending",
+        }),
+      ),
+      toolResult(
+        "TodoWrite",
+        morningDetails("早会", {
+          sync: "completed",
+          focus: "pending",
+          blockers: "completed",
+        }),
+      ),
+    ]);
+
+    expect(result.summary).toBe("早会");
+    expect(result.todos.map((todo) => todo.content)).toEqual([
+      "同步昨日工作进展与已完成事项",
+      "确认今日重点任务与负责人",
+      "识别阻塞问题并约定解决方案/跟进人",
+    ]);
+    expect(result.todos.map((todo) => todo.status)).toEqual([
+      "completed",
+      "pending",
+      "completed",
+    ]);
   });
 });

@@ -64,22 +64,6 @@ export function normalizeTodoWrite(params: TodoWriteParams): NormalizeResult {
   };
 }
 
-export function computeRecentCompletedIds(
-  previous: TaskSnapshot[],
-  next: TaskSnapshot[],
-): string[] {
-  const previousStatus = new Map(
-    previous.map((todo) => [todo.id, todo.status]),
-  );
-  return next
-    .filter(
-      (todo) =>
-        todo.status === "completed" &&
-        previousStatus.get(todo.id) !== "completed",
-    )
-    .map((todo) => todo.id);
-}
-
 export function buildDetails(
   snapshot: TodoStateSnapshot,
   error?: string,
