@@ -38,7 +38,7 @@ function isTaskDetails(value: unknown): value is TaskDetails {
 }
 
 function isFailedTaskDetails(details: TaskDetails): boolean {
-  return details.results.some(isFailedTaskRunResult);
+  return details.results.some((result) => result.status !== "running" && isFailedTaskRunResult(result));
 }
 
 function isTaskErrorContent(content: AgentToolResult<TaskDetails>["content"]): boolean {

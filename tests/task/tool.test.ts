@@ -29,6 +29,15 @@ function failedResultFor(request: TaskRequest): TaskRunResult {
   };
 }
 
+function runningResultFor(request: TaskRequest): TaskRunResult {
+  return {
+    ...resultFor(request),
+    status: "running",
+    finalOutput: "working",
+    exitCode: -1,
+  };
+}
+
 const reviewer: TaskAgentConfig = {
   name: "reviewer",
   description: "Review code",
@@ -122,15 +131,16 @@ describe("Task tool registration", () => {
     expect(result.details.results[0].status).toBe("failed");
   });
 
-  it("passes partial updates through onUpdate", async () => {
+  it("passes running partial updates through onUpdate without marking them as errors", async () => {
     const tools: any[] = [];
     const updates: any[] = [];
     registerTaskTool({ registerTool: (tool: unknown) => tools.push(tool) } as never, {
       discoverAgents: () => ({ agents: [], projectAgentsDir: null, globalAgentsDir: "/tmp/global" }),
       executeTasks: async ({ onUpdate, tasks }) => {
-        const details = { version: 1 as const, results: tasks.map((task) => failedResultFor(task)) };
-        onUpdate?.(details);
-        return { isError: false, details };
+        const runningDetails = { version: 1 as const, results: tasks.map((task) => runningResultFor(task)) };
+        const finalDetails = { version: 1 as const, results: tasks.map((task) => resultFor(task)) };
+        onUpdate?.(runningDetails);
+        return { isError: false, details: finalDetails };
       },
     });
 
@@ -142,9 +152,8 @@ describe("Task tool registration", () => {
       { cwd: "/tmp/project" },
     );
 
-    expect(updates[0].content[0].text).toContain("Task results:");
-    expect(updates[0].isError).toBe(true);
-    expect(updates[0].details.results[0].description).toBe("Default");
+    expect(updates[0].details.results[0].status).toBe("running");
+    expect(updates[0].isError).toBeUndefined();
   });
 
   it("promotes Task tool_result events to runtime errors when details contain failed children", async () => {
@@ -165,6 +174,27 @@ describe("Task tool registration", () => {
     });
 
     expect(result).toEqual({ isError: true });
+  });
+
+  it("does not promote running-only Task tool_result events to runtime errors", async () => {
+    const handlers: Record<string, Function[]> = {};
+    registerTaskTool({
+      registerTool() {},
+      on(event: string, handler: Function) {
+        handlers[event] = [...(handlers[event] ?? []), handler];
+      },
+    } as never);
+
+    const result = await handlers.tool_result[0]({
+      toolName: "Task",
+      content: [{ type: "text", text: "Task results:" }],
+      details: {
+        version: 1,
+        results: [runningResultFor({ description: "Default", prompt: "Do it." })],
+      },
+    });
+
+    expect(result).toEqual({ isError: false });
   });
 
   it("promotes Task normalization errors to runtime errors", async () => {

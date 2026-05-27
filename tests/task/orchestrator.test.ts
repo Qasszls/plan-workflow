@@ -17,6 +17,20 @@ function resultFor(request: TaskRequest, status: TaskRunResult["status"], output
   };
 }
 
+function runningResultFor(request: TaskRequest, output = ""): TaskRunResult {
+  return {
+    description: request.description,
+    prompt: request.prompt,
+    agent: request.subagent_type ?? "default",
+    status: "running",
+    finalOutput: output,
+    messages: [],
+    stderr: "",
+    usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
+    exitCode: -1,
+  };
+}
+
 const reviewer: TaskAgentConfig = {
   name: "reviewer",
   description: "Review code",
@@ -172,11 +186,8 @@ describe("task orchestration", () => {
     expect(maxActive).toBe(MAX_CONCURRENCY);
   });
 
-  it("emits partial updates for child progress, unknown agents, and completions", async () => {
-    const requests = [
-      { description: "Missing", prompt: "Do missing.", subagent_type: "missing" },
-      { description: "Default", prompt: "Do default." },
-    ];
+  it("emits running partial updates but returns only terminal final results", async () => {
+    const requests = [{ description: "Default", prompt: "Do default." }];
     const updates: TaskDetails[] = [];
 
     const execution = await executeTaskRequests({
@@ -185,13 +196,14 @@ describe("task orchestration", () => {
       agents: [],
       onUpdate: (details) => updates.push(details),
       runTask: async ({ request, onUpdate }) => {
-        onUpdate?.(resultFor(request, "completed", "partial"));
+        onUpdate?.(runningResultFor(request, "working"));
         return resultFor(request, "completed", "done");
       },
     });
 
-    expect(execution.details.results.map((result) => result.description)).toEqual(["Missing", "Default"]);
-    expect(updates[0].results.map((result) => result.description)).toEqual(["Missing"]);
-    expect(updates.some((details) => details.results.map((result) => result.description).join(",") === "Missing,Default")).toBe(true);
+    expect(updates[0].results[0].status).toBe("running");
+    expect(updates[0].results[0].finalOutput).toBe("working");
+    expect(execution.details.results[0].status).toBe("completed");
+    expect(execution.details.results.some((result) => result.status === "running")).toBe(false);
   });
 });
