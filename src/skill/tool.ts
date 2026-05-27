@@ -223,15 +223,17 @@ function buildMissingSkillText(skillName: string, availableSkills: string[]): st
 }
 
 function buildReadFailureText(skillName: string, error: string): string {
-  return [`[skill:error] ${skillName}`, "", `Error loading skill "${skillName}": ${error}`].join(
-    "\n",
-  );
+  return [`[skill:error] ${skillName}`, "", formatReadFailureMessage(skillName, error)].join("\n");
 }
 
 function renderFailureText(detail: FailedSkillDetail): string {
   if (detail.reason === "read_error") {
-    return `Error loading skill "${detail.skillName}": ${detail.error}`;
+    return formatReadFailureMessage(detail.skillName, detail.error);
   }
 
   return detail.error;
+}
+
+function formatReadFailureMessage(skillName: string, error: string): string {
+  return `Error loading skill "${skillName}": ${error}`;
 }
