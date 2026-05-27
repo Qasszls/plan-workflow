@@ -104,6 +104,21 @@ describe("Skill tool", () => {
     expect(tool.parameters.additionalProperties).toBe(false);
   });
 
+  it("prepares Claude Code-style single skill params as batch params", () => {
+    const tool = registerWithSnapshot();
+
+    expect(tool.prepareArguments).toBeTypeOf("function");
+    expect(tool.prepareArguments({ skill: "brainstorming" })).toEqual({
+      skills: ["brainstorming"],
+    });
+    expect(tool.prepareArguments({ skills: ["brainstorming"] })).toEqual({
+      skills: ["brainstorming"],
+    });
+    expect(
+      tool.prepareArguments({ skill: "old", skills: ["brainstorming"] }),
+    ).toEqual({ skill: "old", skills: ["brainstorming"] });
+  });
+
   it("returns formatted skill content for a single found skill", async () => {
     const tool = registerWithSnapshot();
 
@@ -132,6 +147,23 @@ describe("Skill tool", () => {
       },
     ]);
     expect(result.details.failed).toEqual([]);
+  });
+
+  it("loads a skill after preparing Claude Code-style single skill params", async () => {
+    const tool = registerWithSnapshot();
+    const prepared = tool.prepareArguments({ skill: " brainstorming " });
+
+    const result = await tool.execute(
+      "call-1",
+      prepared,
+      undefined,
+      undefined,
+      { cwd: root },
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("[skill] brainstorming (5 lines)");
+    expect(result.details.requestedSkills).toEqual(["brainstorming"]);
   });
 
   it("returns multiple found skills in request order", async () => {

@@ -45,6 +45,22 @@ export function createDefaultSkillRegistryCache(): SkillRegistryCache {
   return createSkillRegistryCache((cwd) => discoverSkills({ cwd }));
 }
 
+export function prepareSkillArguments(args: unknown): unknown {
+  if (!isRecord(args)) {
+    return args;
+  }
+
+  if (Object.hasOwn(args, "skill") && !Object.hasOwn(args, "skills")) {
+    return { skills: [args.skill] };
+  }
+
+  return args;
+}
+
+function isRecord(value: unknown): value is { skill?: unknown; skills?: unknown } {
+  return typeof value === "object" && value !== null;
+}
+
 export function registerSkillTool(
   pi: ExtensionAPI,
   options: RegisterSkillToolOptions = {},
@@ -62,6 +78,7 @@ export function registerSkillTool(
       "Use the Skill tool instead of reading skill files directly.",
     ],
     parameters: SkillParamsSchema,
+    prepareArguments: prepareSkillArguments,
     async execute(_toolCallId, params: SkillParams, _signal, _onUpdate, ctx) {
       const normalized = normalizeSkillParams(params);
       if (!normalized.ok) {
