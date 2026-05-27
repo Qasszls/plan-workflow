@@ -1,5 +1,7 @@
 import type { TaskSnapshot } from "./schema.ts";
 
+export const DEFAULT_TODO_SUMMARY = "Todos";
+
 function groupByStatus(
   todos: TaskSnapshot[],
 ): Record<TaskSnapshot["status"], TaskSnapshot[]> {
@@ -42,23 +44,37 @@ export function formatTodosForCommand(
   return lines.join("\n");
 }
 
+function formatOverlayTitle(summary: string | undefined): string {
+  const trimmed = summary?.trim();
+  return trimmed ? trimmed : DEFAULT_TODO_SUMMARY;
+}
+
+function formatOverlayTodo(todo: TaskSnapshot): string {
+  switch (todo.status) {
+    case "in_progress":
+      return `> ${todo.content}`;
+    case "completed":
+      return `✓ ~~${todo.content}~~`;
+    case "pending":
+      return `- ${todo.content}`;
+    case "deleted":
+      return "";
+  }
+}
+
 export function formatTodosForOverlay(
+  summary: string | undefined,
   todos: TaskSnapshot[],
-  recentCompletedIds: Set<string>,
 ): string[] | undefined {
-  const visible = todos.filter(
-    (todo) =>
-      todo.status === "in_progress" ||
-      todo.status === "pending" ||
-      recentCompletedIds.has(todo.id),
-  );
+  const visible = todos.filter((todo) => todo.status !== "deleted");
   if (visible.length === 0) return undefined;
 
-  const groups = groupByStatus(visible);
-  const lines = ["Plan"];
-  for (const todo of groups.in_progress) lines.push(`> ${todo.content}`);
-  for (const todo of groups.pending) lines.push(`- ${todo.content}`);
-  for (const todo of groups.completed) lines.push(`x ${todo.content}`);
+  const completed = visible.filter((todo) => todo.status === "completed").length;
+  const lines = [
+    formatOverlayTitle(summary),
+    `${completed}/${visible.length}`,
+    ...visible.map(formatOverlayTodo),
+  ];
 
   const maxLines = 12;
   if (lines.length <= maxLines) return lines;
