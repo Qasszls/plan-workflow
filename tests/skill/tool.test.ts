@@ -176,7 +176,7 @@ describe("Skill tool", () => {
     expect(rendered.children[0].text).toBe("[skill] brainstorming (5 lines)");
   });
 
-  it("renders multiple outcomes with a loaded/failed summary when something loaded", async () => {
+  it("renders multiple outcomes as per-skill compact entries", async () => {
     const tool = registerWithSnapshot();
     const result = await tool.execute(
       "call-1",
@@ -191,11 +191,11 @@ describe("Skill tool", () => {
     });
 
     expect(rendered.children[0].text).toBe(
-      "[skill] 3 requested, 2 loaded, 1 failed",
+      '[skill] brainstorming (5 lines), missing (error:Skill "missing" not found.), vitest (5 lines)',
     );
   });
 
-  it("renders the first failure as error text when no skill loaded", async () => {
+  it("renders missing-only outcomes as per-skill compact errors", async () => {
     const tool = registerWithSnapshot();
     const result = await tool.execute(
       "call-1",
@@ -209,7 +209,9 @@ describe("Skill tool", () => {
       isError: false,
     });
 
-    expect(rendered.text).toContain('Skill "missing" not found.');
+    expect(rendered.children[0].text).toBe(
+      '[skill] missing (error:Skill "missing" not found.)',
+    );
   });
 
   it("loads duplicate skill names once", async () => {
@@ -361,7 +363,7 @@ describe("Skill tool", () => {
     expect(result.details.failed[0].reason).toBe("read_error");
   });
 
-  it("renders the first read failure as error text when no skill loaded", async () => {
+  it("renders read-failure-only outcomes as per-skill compact errors", async () => {
     rmSync(brainstormingPath);
     const tool = registerWithSnapshot();
 
@@ -377,8 +379,8 @@ describe("Skill tool", () => {
       isError: false,
     });
 
-    expect(rendered.text).toContain(
-      'Error loading skill "brainstorming": failed to read skill file:',
+    expect(rendered.children[0].text).toContain(
+      '[skill] brainstorming (error:Error loading skill "brainstorming": failed to read skill file:',
     );
   });
 

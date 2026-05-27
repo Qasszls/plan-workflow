@@ -115,37 +115,12 @@ export function registerSkillTool(
         return new Text(theme.fg("customMessageText", "Skill"), 0, 0);
       }
 
-      if (details.loaded.length === 1 && details.failed.length === 0) {
-        const loaded = details.loaded[0];
-        const label = theme.fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m");
-        const name = theme.fg("customMessageText", loaded.skillName);
-        const lines = theme.fg("dim", ` (${loaded.lineCount} lines)`);
-        const box = new Box(1, 0, (text: string) =>
-          theme.bg("customMessageBg", text),
-        );
-        box.addChild(new Text(`${label} ${name}${lines}`, 0, 0));
-        return box;
-      }
-
-      if (details.loaded.length > 0) {
-        const label = theme.fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m");
-        const text = `${label} ${details.requestedSkills.length} requested, ${details.loaded.length} loaded, ${details.failed.length} failed`;
-        const box = new Box(1, 0, (value: string) =>
-          theme.bg("customMessageBg", value),
-        );
-        box.addChild(new Text(text, 0, 0));
-        return box;
-      }
-
-      const firstFailure = details.failed[0];
-      return new Text(
-        theme.fg(
-          "error",
-          firstFailure ? renderFailureText(firstFailure) : "Skill failed.",
-        ),
-        0,
-        0,
+      const text = renderCompactSkillResult(details, theme);
+      const box = new Box(1, 0, (value: string) =>
+        theme.bg("customMessageBg", value),
       );
+      box.addChild(new Text(text, 0, 0));
+      return box;
     },
   });
 
@@ -224,6 +199,38 @@ function buildMissingSkillText(skillName: string, availableSkills: string[]): st
 
 function buildReadFailureText(skillName: string, error: string): string {
   return [`[skill:error] ${skillName}`, "", formatReadFailureMessage(skillName, error)].join("\n");
+}
+
+function renderCompactSkillResult(
+  details: SkillToolDetails,
+  theme: { fg(name: string, text: string): string },
+): string {
+  const label = theme.fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m");
+  const loadedByName = new Map(
+    details.loaded.map((detail) => [detail.skillName, detail]),
+  );
+  const failedByName = new Map(
+    details.failed.map((detail) => [detail.skillName, detail]),
+  );
+  const entries = details.requestedSkills.map((skillName) => {
+    const loaded = loadedByName.get(skillName);
+    if (loaded) {
+      const name = theme.fg("customMessageText", loaded.skillName);
+      const lines = theme.fg("dim", ` (${loaded.lineCount} lines)`);
+      return `${name}${lines}`;
+    }
+
+    const failed = failedByName.get(skillName);
+    if (failed) {
+      const name = theme.fg("customMessageText", failed.skillName);
+      const error = theme.fg("error", `(error:${renderFailureText(failed)})`);
+      return `${name} ${error}`;
+    }
+
+    return `${skillName} ${theme.fg("error", "(error:Skill failed.)")}`;
+  });
+
+  return `${label} ${entries.join(", ")}`;
 }
 
 function renderFailureText(detail: FailedSkillDetail): string {
