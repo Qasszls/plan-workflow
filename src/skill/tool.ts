@@ -45,16 +45,16 @@ export function createDefaultSkillRegistryCache(): SkillRegistryCache {
   return createSkillRegistryCache((cwd) => discoverSkills({ cwd }));
 }
 
-export function prepareSkillArguments(args: unknown): unknown {
+export function prepareSkillArguments(args: unknown): SkillParams {
   if (!isRecord(args)) {
-    return args;
+    return args as SkillParams;
   }
 
   if (Object.hasOwn(args, "skill") && !Object.hasOwn(args, "skills")) {
-    return { skills: [args.skill] };
+    return { skills: [args.skill as string] };
   }
 
-  return args;
+  return args as SkillParams;
 }
 
 function isRecord(value: unknown): value is { skill?: unknown; skills?: unknown } {
