@@ -4,6 +4,7 @@ import {
   type TaskSnapshot,
   type TodoWriteDetails,
   type TodoWriteItemInput,
+  type TodoWriteParams,
 } from "../../src/todo/schema.ts";
 
 describe("todo schema", () => {
@@ -34,6 +35,45 @@ describe("todo schema", () => {
     };
 
     expect(task.status).toBe("deleted");
+  });
+
+  it("allows TodoWrite params to include an optional summary", () => {
+    const params: TodoWriteParams = {
+      summary: "早会",
+      todos: [
+        {
+          id: "sync",
+          content: "同步昨日工作进展与已完成事项",
+          status: "pending",
+        },
+      ],
+    };
+
+    expect(params.summary).toBe("早会");
+  });
+
+  it("recognizes details snapshots with summary", () => {
+    const details: TodoWriteDetails = {
+      version: 1,
+      action: "replace",
+      summary: "早会",
+      todos: [],
+      stats: { pending: 0, inProgress: 0, completed: 0, deleted: 0 },
+    };
+
+    expect(isTodoWriteDetails(details)).toBe(true);
+  });
+
+  it("rejects details snapshots with non-string summary", () => {
+    expect(
+      isTodoWriteDetails({
+        version: 1,
+        action: "replace",
+        summary: 12,
+        todos: [],
+        stats: { pending: 0, inProgress: 0, completed: 0, deleted: 0 },
+      }),
+    ).toBe(false);
   });
 
   it("recognizes valid TodoWrite details snapshots", () => {

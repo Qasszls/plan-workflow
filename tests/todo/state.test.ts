@@ -21,7 +21,7 @@ describe("todo state", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.todos).toEqual([
+    expect(result.snapshot.todos).toEqual([
       {
         id: "a",
         content: "Write tests",
@@ -40,7 +40,7 @@ describe("todo state", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.todos[0].status).toBe("deleted");
+    expect(result.snapshot.todos[0].status).toBe("deleted");
   });
 
   it("rejects duplicate ids", () => {
@@ -54,7 +54,29 @@ describe("todo state", () => {
     expect(result).toEqual({ ok: false, error: 'Duplicate todo id "a"' });
   });
 
-  it("rejects missing blockedBy references", () => {
+  it("normalizes optional summary into the snapshot", () => {
+    const result = normalizeTodoWrite({
+      summary: "  早会  ",
+      todos: [{ id: "a", content: "One", status: "pending" }],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.summary).toBe("早会");
+  });
+
+  it("omits blank summary from the snapshot", () => {
+    const result = normalizeTodoWrite({
+      summary: "   ",
+      todos: [{ id: "a", content: "One", status: "pending" }],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.summary).toBeUndefined();
+  });
+
+  it("ignores raw blockedBy input while normalizing new snapshots", () => {
     const result = normalizeTodoWrite({
       todos: [
         {
@@ -62,28 +84,13 @@ describe("todo state", () => {
           content: "One",
           status: "pending",
           blockedBy: ["missing"],
-        },
+        } as never,
       ],
     });
 
-    expect(result).toEqual({
-      ok: false,
-      error: 'Todo "a" is blocked by unknown todo "missing"',
-    });
-  });
-
-  it("rejects dependency cycles", () => {
-    const result = normalizeTodoWrite({
-      todos: [
-        { id: "a", content: "One", status: "pending", blockedBy: ["b"] },
-        { id: "b", content: "Two", status: "pending", blockedBy: ["a"] },
-      ],
-    });
-
-    expect(result).toEqual({
-      ok: false,
-      error: "Todo dependencies contain a cycle",
-    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.todos[0].blockedBy).toEqual([]);
   });
 
   it("rejects non-object metadata", () => {
@@ -116,7 +123,7 @@ describe("todo state", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(summarizeStats(result.todos)).toEqual({
+    expect(summarizeStats(result.snapshot.todos)).toEqual({
       pending: 1,
       inProgress: 1,
       completed: 1,
@@ -134,7 +141,7 @@ describe("todo state", () => {
 
     expect(
       previous.ok && next.ok
-        ? computeRecentCompletedIds(previous.todos, next.todos)
+        ? computeRecentCompletedIds(previous.snapshot.todos, next.snapshot.todos)
         : [],
     ).toEqual(["a"]);
   });
@@ -146,10 +153,10 @@ describe("todo state", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(buildDetails(result.todos)).toEqual({
+    expect(buildDetails(result.snapshot)).toEqual({
       version: 1,
       action: "replace",
-      todos: result.todos,
+      todos: result.snapshot.todos,
       stats: { pending: 1, inProgress: 0, completed: 0, deleted: 0 },
     });
   });

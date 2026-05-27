@@ -20,11 +20,15 @@ export const TodoWriteItemSchema = Type.Object({
   }),
   status: TodoStatusSchema,
   priority: Type.Optional(TodoPrioritySchema),
-  blockedBy: Type.Optional(Type.Array(Type.String())),
   metadata: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 });
 
 export const TodoWriteParamsSchema = Type.Object({
+  summary: Type.Optional(
+    Type.String({
+      description: "Short title for the todo group, such as '早会'",
+    }),
+  ),
   todos: Type.Array(TodoWriteItemSchema),
 });
 
@@ -46,6 +50,11 @@ export interface TaskSnapshot {
   updatedAtTurn?: number;
 }
 
+export interface TodoStateSnapshot {
+  summary?: string;
+  todos: TaskSnapshot[];
+}
+
 export interface TodoStats {
   pending: number;
   inProgress: number;
@@ -58,6 +67,7 @@ export interface TodoStats {
 export interface TodoWriteDetails {
   version: 1;
   action: "replace";
+  summary?: string;
   todos: TaskSnapshot[];
   stats: TodoStats;
   error?: string;
@@ -105,6 +115,8 @@ export function isTodoWriteDetails(value: unknown): value is TodoWriteDetails {
   if (!isRecord(value)) return false;
   if (value.version !== 1) return false;
   if (value.action !== "replace") return false;
+  if (value.summary !== undefined && typeof value.summary !== "string")
+    return false;
   if (!Array.isArray(value.todos) || !value.todos.every(isTaskSnapshot))
     return false;
   if (!isTodoStats(value.stats)) return false;

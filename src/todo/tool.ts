@@ -63,7 +63,7 @@ export function registerTodoWriteTool(
     async execute(_toolCallId, params: TodoWriteParams, _signal, _onUpdate, ctx) {
       const normalized = normalizeTodoWrite(params);
       if (!normalized.ok) {
-        const details = buildDetails(state.todos, normalized.error);
+        const details = buildDetails({ todos: state.todos }, normalized.error);
         return {
           content: [
             { type: "text", text: `TodoWrite error: ${normalized.error}` },
@@ -75,13 +75,16 @@ export function registerTodoWriteTool(
 
       const newlyCompleted = computeRecentCompletedIds(
         state.todos,
-        normalized.todos,
+        normalized.snapshot.todos,
       );
-      setTodos(state, normalized.todos);
+      setTodos(state, normalized.snapshot.todos);
       for (const id of newlyCompleted) state.recentCompletedIds.add(id);
       updateOverlay(ctx);
 
-      const details = buildDetails(state.todos);
+      const details = buildDetails({
+        summary: normalized.snapshot.summary,
+        todos: state.todos,
+      });
       return {
         content: [
           { type: "text", text: formatTodoWriteSummary(details.stats, state.todos) },
