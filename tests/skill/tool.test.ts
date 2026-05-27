@@ -348,6 +348,47 @@ describe("Skill tool", () => {
     expect(result.details.loaded).toEqual([]);
     expect(result.details.failed[0].reason).toBe("read_error");
   });
+
+  it("renders the first read failure as error text when no skill loaded", async () => {
+    rmSync(brainstormingPath);
+    const tool = registerWithSnapshot();
+
+    const result = await tool.execute(
+      "call-1",
+      { skills: ["brainstorming"] },
+      undefined,
+      undefined,
+      { cwd: root },
+    );
+
+    const rendered = tool.renderResult(result, undefined, testTheme(), {
+      isError: false,
+    });
+
+    expect(rendered.text).toContain(
+      'Error loading skill "brainstorming": failed to read skill file:',
+    );
+  });
+
+  it("renders parameter errors through the existing error text path", async () => {
+    const tool = registerWithSnapshot();
+
+    const blankArray = await tool.execute(
+      "call-1",
+      { skills: [] },
+      undefined,
+      undefined,
+      { cwd: root },
+    );
+
+    const rendered = tool.renderResult(blankArray, undefined, testTheme(), {
+      isError: true,
+    });
+
+    expect(rendered.text).toContain(
+      "Skill error: skills must contain at least one skill name",
+    );
+  });
 });
 
 describe("Skill entrypoint integration", () => {
