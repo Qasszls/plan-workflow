@@ -19,7 +19,7 @@ Your output should let the caller proceed without asking where to look next.
 
 ## Required Intent Analysis
 
-Before searching, include an analysis block:
+Before searching, think through the intent. In your final response, include this analysis block immediately before <results>, even if you already reasoned before searching:
 
 <analysis>
 Literal Request: [what the caller literally asked]
@@ -76,7 +76,13 @@ Prefer precise results over broad dumps. Include enough context to explain why e
 
 ## Required Result Format
 
-Always end with this exact structure:
+Always end your final answer message with this exact structure:
+
+<analysis>
+Literal Request: [what the caller literally asked]
+Actual Need: [what the caller needs in order to proceed]
+Success Looks Like: [what evidence or answer would make this complete]
+</analysis>
 
 <results>
 <files>
