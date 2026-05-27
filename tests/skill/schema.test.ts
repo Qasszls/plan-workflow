@@ -10,43 +10,71 @@ interface JsonObjectSchemaShape {
   required?: string[];
   additionalProperties?: boolean;
   properties?: {
-    skill?: {
+    skills?: {
       type?: string;
+      items?: {
+        type?: string;
+      };
+      minItems?: number;
     };
   };
 }
 
 describe("skill schema", () => {
-  it("defines a strict object schema for skill params", () => {
+  it("defines a strict object schema for batch skill params", () => {
     const schema = SkillParamsSchema as JsonObjectSchemaShape;
 
     expect(schema.type).toBe("object");
-    expect(schema.required).toEqual(["skill"]);
+    expect(schema.required).toEqual(["skills"]);
     expect(schema.additionalProperties).toBe(false);
-    expect(schema.properties?.skill?.type).toBe("string");
+    expect(schema.properties?.skills?.type).toBe("array");
+    expect(schema.properties?.skills?.items?.type).toBe("string");
+    expect(schema.properties?.skills?.minItems).toBe(1);
   });
 
-  it("trims skill names during normalization", () => {
-    expect(normalizeSkillParams({ skill: "  brainstorming  " })).toEqual({
+  it("trims and deduplicates skill names during normalization", () => {
+    expect(
+      normalizeSkillParams({
+        skills: ["  brainstorming  ", "vitest", "brainstorming"],
+      }),
+    ).toEqual({
       ok: true,
-      skill: "brainstorming",
+      skills: ["brainstorming", "vitest"],
     });
   });
 
-  it("rejects blank skill names", () => {
-    expect(normalizeSkillParams({ skill: "" })).toEqual({
+  it("rejects missing or non-array skills", () => {
+    expect(normalizeSkillParams({})).toEqual({
       ok: false,
-      error: "Skill name must not be blank",
+      error: "skills must be an array of skill names",
     });
-    expect(normalizeSkillParams({ skill: "   " })).toEqual({
+    expect(normalizeSkillParams({ skills: "brainstorming" })).toEqual({
       ok: false,
-      error: "Skill name must not be blank",
+      error: "skills must be an array of skill names",
+    });
+  });
+
+  it("rejects empty skill arrays", () => {
+    expect(normalizeSkillParams({ skills: [] })).toEqual({
+      ok: false,
+      error: "skills must contain at least one skill name",
+    });
+  });
+
+  it("rejects invalid skill array items", () => {
+    expect(normalizeSkillParams({ skills: ["brainstorming", 1] })).toEqual({
+      ok: false,
+      error: "skills[1] must be a string",
+    });
+    expect(normalizeSkillParams({ skills: ["brainstorming", "   "] })).toEqual({
+      ok: false,
+      error: "skills[1] must not be blank",
     });
   });
 
   it("supports the SkillParams type", () => {
-    const params: SkillParams = { skill: "test-driven-development" };
+    const params: SkillParams = { skills: ["test-driven-development"] };
 
-    expect(params.skill).toBe("test-driven-development");
+    expect(params.skills).toEqual(["test-driven-development"]);
   });
 });
