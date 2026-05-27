@@ -25,7 +25,14 @@ export type NormalizeSkillParamsResult =
 export function normalizeSkillParams(
   params: unknown,
 ): NormalizeSkillParamsResult {
-  if (!isRecord(params) || !Array.isArray(params.skills)) {
+  if (
+    !isRecord(params) ||
+    !Array.isArray(params.skills) ||
+    Object.keys(params).some((key) => key !== "skills")
+  ) {
+    if (isRecord(params) && Object.keys(params).some((key) => key !== "skills")) {
+      return { ok: false, error: "skills params must not include extra properties" };
+    }
     return { ok: false, error: "skills must be an array of skill names" };
   }
 

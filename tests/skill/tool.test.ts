@@ -255,6 +255,18 @@ describe("Skill tool", () => {
     expect(blankItem.content[0].text).toBe(
       "Skill error: skills[1] must not be blank",
     );
+
+    const extraProperty = await tool.execute(
+      "call-3",
+      { skills: ["brainstorming"], skill: "old" } as never,
+      undefined,
+      undefined,
+      { cwd: root },
+    );
+    expect(extraProperty.isError).toBe(true);
+    expect(extraProperty.content[0].text).toBe(
+      "Skill error: skills params must not include extra properties",
+    );
   });
 
   it("returns partial failures inline without marking the tool call as an error", async () => {

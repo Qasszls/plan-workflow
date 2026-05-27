@@ -54,6 +54,15 @@ describe("skill schema", () => {
     });
   });
 
+  it("rejects extra properties", () => {
+    expect(
+      normalizeSkillParams({ skills: ["brainstorming"], skill: "old" }),
+    ).toEqual({
+      ok: false,
+      error: "skills params must not include extra properties",
+    });
+  });
+
   it("rejects empty skill arrays", () => {
     expect(normalizeSkillParams({ skills: [] })).toEqual({
       ok: false,
